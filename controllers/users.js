@@ -3,9 +3,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
+const { SECRET } = require('../utils/config');
 const BadRequestError = require('../utils/errors/BadRequestError');
 const ConflictError = require('../utils/errors/ConflictError');
 const NotFoundError = require('../utils/errors/NotFoundError');
+const {
+  CREATED_CODE,
+  MONGODB_CODE,
+  badRequestErrorMessage,
+  conflictErrorMessage,
+  notFoundErrorMessage,
+} = require('../utils/constants');
 
 const User = require('../models/user');
 
@@ -23,18 +31,18 @@ const createUser = (req, res, next) => {
       password: hash,
     }))
     .then(() => {
-      res.status(201).send({
+      res.status(CREATED_CODE).send({
         name,
         email,
       });
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
-        next(new BadRequestError('При регистрации пользователя произошла ошибка'));
+        next(new BadRequestError(badRequestErrorMessage.createUser));
         return;
       }
-      if (err.code === 11000) {
-        next(new ConflictError('Пользователь с таким email уже существует'));
+      if (err.code === MONGODB_CODE) {
+        next(new ConflictError(conflictErrorMessage.createUser));
         return;
       }
       next(err);
@@ -47,7 +55,7 @@ const login = (req, res, next) => {
     .then((user) => {
       const token = jwt.sign(
         { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        NODE_ENV === 'production' ? JWT_SECRET : SECRET,
         { expiresIn: '5d' },
       );
       res.send({ token });
@@ -60,14 +68,14 @@ const login = (req, res, next) => {
 const getCurrentUser = (req, res, next) => {
   User.findById(req.user._id)
     .orFail(() => {
-      next(new NotFoundError('Пользователь не найден'));
+      next(new NotFoundError(notFoundErrorMessage.notFoundUser));
     })
     .then((user) => {
-      res.send(user);
+      res.send({ name: user.name, email: user.email });
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.CastError) {
-        next(new BadRequestError('Переданы некорректные данные'));
+        next(new BadRequestError(badRequestErrorMessage.getUser));
         return;
       }
       next(err);
@@ -78,11 +86,11 @@ const updateUserInfo = (req, res, next) => {
   const { email, name } = req.body;
   User.findByIdAndUpdate(req.user._id, { email, name }, { new: true, runValidators: true })
     .then((user) => {
-      res.send(user);
+      res.send({ name: user.name, email: user.email });
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
-        next(new BadRequestError('При обновлении профиля произошла ошибка'));
+        next(new BadRequestError(badRequestErrorMessage.updateUser));
         return;
       }
       next(err);

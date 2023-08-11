@@ -13,12 +13,13 @@ const auth = require('./middlewares/auth');
 const error = require('./middlewares/error');
 const { userInfoValidation, authInfoValidation } = require('./middlewares/validation');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
+const { MONGO_URL } = require('./utils/config');
 
-const { PORT = 3000, DB_URL = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
+const { NODE_ENV, PORT = 3000, DB_URL } = process.env;
 
 app.use(express.json());
 app.use(helmet());
-mongoose.connect(DB_URL);
+mongoose.connect(NODE_ENV === 'production' ? DB_URL : MONGO_URL);
 
 app.use(cors());
 app.use(requestLogger);

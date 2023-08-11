@@ -1,13 +1,15 @@
 const jwt = require('jsonwebtoken');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
+const { SECRET } = require('../utils/config');
 const UnauthorizedError = require('../utils/errors/UnauthorizedError');
+const { unauthorizedErrorMessage } = require('../utils/constants');
 
 module.exports = (req, res, next) => {
   const { authorization } = req.headers;
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
-    next(new UnauthorizedError('При авторизации произошла ошибка. Токен не передан или передан не в том формате'));
+    next(new UnauthorizedError(unauthorizedErrorMessage.bearerTokenError));
     return;
   }
 
@@ -15,9 +17,9 @@ module.exports = (req, res, next) => {
   let payload;
 
   try {
-    payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret');
+    payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : SECRET);
   } catch (err) {
-    next(new UnauthorizedError('ри авторизации произошла ошибка. Переданный токен некорректен'));
+    next(new UnauthorizedError(unauthorizedErrorMessage.verifyTokenError));
   }
   req.user = payload;
 
